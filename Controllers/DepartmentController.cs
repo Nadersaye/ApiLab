@@ -1,4 +1,5 @@
-﻿using LabApi.DTO;
+﻿using AutoMapper;
+using LabApi.DTO;
 using LabApi.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -11,14 +12,16 @@ namespace LabApi.Controllers
     public class DepartmentController : ControllerBase
     {
         ITIDbContext _db;
-        public DepartmentController(ITIDbContext db)
+        private readonly IMapper _mapper;
+        public DepartmentController(ITIDbContext db, IMapper mapper)
         {
             _db = db;
+            _mapper = mapper;
         }
         [HttpGet]
         public IActionResult Get()
         {
-            var departments = _db.Departments.Include(d => d.Students).ToList();
+            var departments = _db.Departments.Where(d=>!d.IsDeleted).Include(d => d.Students ).ToList();
 
             if (departments == null || !departments.Any())
             {
@@ -40,7 +43,7 @@ namespace LabApi.Controllers
         [HttpGet("{id:int}")]
         public IActionResult Get(int id)
         {
-            var department = _db.Departments.Include(d=>d.Students).FirstOrDefault(d => d.Id == id);
+            var department = _db.Departments.Include(d=>d.Students).FirstOrDefault(d => d.Id == id && !d.IsDeleted);
 
             if (department == null)
             {
@@ -58,7 +61,7 @@ namespace LabApi.Controllers
         [HttpGet("{name:alpha}")]
         public IActionResult Get(string name)
         {
-            var department = _db.Departments.FirstOrDefault(d => d.Name == name);
+            var department = _db.Departments.FirstOrDefault(d => d.Name == name && !d.IsDeleted);
             if (department == null)
             {
                 return NotFound();
@@ -70,21 +73,29 @@ namespace LabApi.Controllers
         {
             _db.Departments.Add(department);
             _db.SaveChanges();
-            return CreatedAtAction(nameof(Get), new { id = department.Id }, new { message = "created", Department = department });
+            var departmentDTO = _mapper.Map<DepartmentDTO>(department);
+            return CreatedAtAction(nameof(Get), new { id = department.Id }, new { message = "created", Department = departmentDTO });
         }
         [HttpPut]
         public IActionResult Update(Department department)
         {
             _db.Departments.Update(department);
             _db.SaveChanges();
+            var departmentDTO = _mapper.Map<DepartmentDTO>(department);
             return Ok(new { message = "updated", Department = department });
         }
-        [HttpDelete]
-        public IActionResult Delete(Department department)
+        [HttpDelete("{id:int}")]
+        public IActionResult Delete(int id)
         {
-            _db.Departments.Remove(department);
+            var department = _db.Departments.FirstOrDefault(d => d.Id == id && !d.IsDeleted);
+            if (department == null)
+            {
+                return NotFound();
+            }
+            department.IsDeleted = true;
             _db.SaveChanges();
-            return Ok(new { message = "deleted", Department = department });
+            var departmentDTO = _mapper.Map<DepartmentDTO>(department);
+            return Ok(new { message = "deleted", Department = departmentDTO });
         }
     }
 }

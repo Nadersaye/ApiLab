@@ -1,4 +1,5 @@
-﻿using LabApi.DTO;
+﻿using AutoMapper;
+using LabApi.DTO;
 using LabApi.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.JsonPatch;
@@ -11,20 +12,24 @@ namespace LabApi.Controllers
     [ApiController]
     public class StudentController : ControllerBase
     {
-        ITIDbContext _db;
-        public StudentController(ITIDbContext db)
+        private readonly ITIDbContext _db;
+        private readonly IMapper _mapper;
+        public StudentController(ITIDbContext db,IMapper mapper)
         {
             _db = db;
+            _mapper = mapper;
         }
         [HttpGet]
         public IActionResult Get()
         {
-            var students = _db.Students.ToList();
-            if (students is null)
+            var students = _db.Students.Include(s => s.Department).ToList();
+            if (students == null )
             {
                 return NotFound();
             }
-            return Ok(students);
+
+            var studentDTOs = _mapper.Map<List<StudentDTO>>(students);
+            return Ok(studentDTOs);
         }
         [HttpGet("{id:int}")]
         public IActionResult Get(int id)
@@ -37,7 +42,7 @@ namespace LabApi.Controllers
             StudentDTO studentDTO = new StudentDTO { };
             studentDTO.name = student.Name;
             studentDTO.address = student.Address;
-            studentDTO.deptName = student.Department.Name;
+            studentDTO.deptName = student.Department!.Name;
             studentDTO.skill = "problem solving";
             return Ok(new { message = $"Student with id {id} is found", Student = studentDTO });
         }
@@ -49,21 +54,24 @@ namespace LabApi.Controllers
             {
                 return NotFound();
             }
-            return Ok(new { message = $"Student with name {name} is found", Student = student });
+            var studentDTO = _mapper.Map<StudentDTO>(student);
+            return Ok(new { message = $"Student with name {name} is found", Student = studentDTO });
         }
         [HttpPost]
         public IActionResult Add(Student student)
         {
             _db.Students.Add(student);
             _db.SaveChanges();
-            return CreatedAtAction(nameof(Get), new { id = student.Id }, new { message = "created", Strudent = student });
+            var studentDTO = _mapper.Map<StudentDTO>(student);
+            return CreatedAtAction(nameof(Get), new { id = student.Id }, new { message = "created", Strudent = studentDTO });
         }
         [HttpPut]
         public IActionResult Update(Student student)
         {
             _db.Students.Update(student);
             _db.SaveChanges();
-            return Ok(new { message = "updated", Student = student });
+            var studentDTO = _mapper.Map<StudentDTO>(student);
+            return Ok(new { message = "updated", Student = studentDTO });
         }
         [HttpPatch("{id:int}")]
         public IActionResult Patch(int id, [FromBody] JsonPatchDocument<Student> patchDoc)
@@ -87,7 +95,8 @@ namespace LabApi.Controllers
             }
 
             _db.SaveChanges();
-            return Ok(new { message = "patched", Student = student });
+            var studentDTO = _mapper.Map<StudentDTO>(student);
+            return Ok(new { message = "patched", Student = studentDTO });
         }
 
 
@@ -102,7 +111,8 @@ namespace LabApi.Controllers
             }
             _db.Students.Remove(student);
             _db.SaveChanges();
-            return Ok(new { message = "deleted", Student = student });
+            var studentDTO = _mapper.Map<StudentDTO>(student);
+            return Ok(new { message = "deleted", Student = studentDTO });
         }
     }
 }

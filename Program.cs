@@ -37,6 +37,7 @@ namespace LabApi
                     SqlOptions => SqlOptions.EnableRetryOnFailure()
                     )
                 );
+            builder.Services.AddAutoMapper(typeof(Program).Assembly);
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.
