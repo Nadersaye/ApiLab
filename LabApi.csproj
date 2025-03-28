@@ -24,9 +24,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Middlewares\" />
     <Folder Include="Filters\" />
-    <Folder Include="Repo\" />
   </ItemGroup>
 
 </Project>

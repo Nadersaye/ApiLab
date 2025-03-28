@@ -4,6 +4,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc.NewtonsoftJson;
 using Microsoft.EntityFrameworkCore.Migrations.Operations;
 using Microsoft.Extensions.Options;
+using LabApi.Repo;
+using LabApi.Middlewares;
 
 namespace LabApi
 {
@@ -38,6 +40,7 @@ namespace LabApi
                     )
                 );
             builder.Services.AddAutoMapper(typeof(Program).Assembly);
+            builder.Services.AddScoped(typeof(IGenericRepo<>), typeof(GenericRepo<>));
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.
@@ -51,6 +54,7 @@ namespace LabApi
             app.UseAuthorization();
 
             app.UseCors("AllowAnyUser");
+            app.UseMiddleware<ExceptionHandlingMiddleware>();
             app.MapControllers();
 
             app.Run();

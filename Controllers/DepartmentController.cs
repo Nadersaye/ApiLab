@@ -1,7 +1,8 @@
 ﻿using AutoMapper;
 using LabApi.DTO;
 using LabApi.Models;
-using Microsoft.AspNetCore.Http;
+using LabApi.Repo;
+using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,19 +12,19 @@ namespace LabApi.Controllers
     [ApiController]
     public class DepartmentController : ControllerBase
     {
-        ITIDbContext _db;
+        private readonly IGenericRepo<Department> _repo;
         private readonly IMapper _mapper;
-        public DepartmentController(ITIDbContext db, IMapper mapper)
+        public DepartmentController(IGenericRepo<Department> departmentRepo, IMapper mapper)
         {
-            _db = db;
+            _repo = departmentRepo;
             _mapper = mapper;
         }
-        [HttpGet]
-        public IActionResult Get()
-        {
-            var departments = _db.Departments.Where(d=>!d.IsDeleted).Include(d => d.Students ).ToList();
 
-            if (departments == null || !departments.Any())
+        [HttpGet]
+        public async Task<IActionResult> Get()
+        {
+            var departments = await _repo.GetAllWithIncludesAsync(d => d.Students);
+            if (departments == null)
             {
                 return NotFound();
             }
@@ -41,61 +42,97 @@ namespace LabApi.Controllers
         }
 
         [HttpGet("{id:int}")]
-        public IActionResult Get(int id)
+        public async Task<IActionResult> Get(int id)
         {
-            var department = _db.Departments.Include(d=>d.Students).FirstOrDefault(d => d.Id == id && !d.IsDeleted);
-
+            var department = await _repo.GetByIdWithIncludesAsync(id, d => d.Students);
             if (department == null)
             {
                 return NotFound();
             }
-            DepartmentDTO departmentDTO = new DepartmentDTO { };
-            departmentDTO.DeptName = department.Name;
-            departmentDTO.StudentSNames = department.Students.Select(s => s.Name).ToList();
-            departmentDTO.ManagerName = department.ManagerName;
-            departmentDTO.Count = department.Students.Count;
-            departmentDTO.Message = "Department found";
+            DepartmentDTO departmentDTO = new DepartmentDTO
+            {
+                DeptName = department.Name,
+                StudentSNames = department.Students.Select(s => s.Name).ToList(),
+                ManagerName = department.ManagerName,
+                Count = department.Students.Count,
+                Message = "Department found"
+            };
 
             return Ok(new { message = $"Department with id {id} is found", Department = departmentDTO });
         }
+
         [HttpGet("{name:alpha}")]
-        public IActionResult Get(string name)
+        public async Task<IActionResult> Get(string name)
         {
-            var department = _db.Departments.FirstOrDefault(d => d.Name == name && !d.IsDeleted);
+            var departments = await _repo.FindAsync(d => d.Name == name && !d.IsDeleted);
+            var department = departments.FirstOrDefault();
             if (department == null)
             {
                 return NotFound();
             }
-            return Ok(new { message = $"Department with name {name} is found", Department = department });
+            var departmentDTO = _mapper.Map<DepartmentDTO>(department);
+            return Ok(new { message = $"Department with name {name} is found", Department = departmentDTO });
         }
+
         [HttpPost]
-        public IActionResult Add(Department department)
+        public async Task<IActionResult> Add(Department department)
         {
-            _db.Departments.Add(department);
-            _db.SaveChanges();
+            await _repo.AddAsync(department);
             var departmentDTO = _mapper.Map<DepartmentDTO>(department);
             return CreatedAtAction(nameof(Get), new { id = department.Id }, new { message = "created", Department = departmentDTO });
         }
+
         [HttpPut]
-        public IActionResult Update(Department department)
+        public async Task<IActionResult> Update(Department department)
         {
-            _db.Departments.Update(department);
-            _db.SaveChanges();
+            await _repo.UpdateAsync(department);
             var departmentDTO = _mapper.Map<DepartmentDTO>(department);
-            return Ok(new { message = "updated", Department = department });
+            return Ok(new { message = "updated", Department = departmentDTO });
         }
+
         [HttpDelete("{id:int}")]
-        public IActionResult Delete(int id)
+        public async Task<IActionResult> Delete(int id)
         {
-            var department = _db.Departments.FirstOrDefault(d => d.Id == id && !d.IsDeleted);
+            try
+            {
+                await _repo.SoftDeleteAsync(id);
+            }
+            catch (ArgumentException)
+            {
+                return NotFound();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            var department = await _repo.GetByIdAsync(id);
             if (department == null)
             {
                 return NotFound();
             }
-            department.IsDeleted = true;
-            _db.SaveChanges();
             var departmentDTO = _mapper.Map<DepartmentDTO>(department);
             return Ok(new { message = "deleted", Department = departmentDTO });
+        }
+        [HttpPatch("{id:int}")]
+        public async Task<IActionResult> Patch(int id, [FromBody] JsonPatchDocument<Department> patchDoc)
+        {
+            if (patchDoc == null)
+            {
+                return BadRequest();
+            }
+
+            try
+            {
+                await _repo.PatchAsync(id, patchDoc);
+            }
+            catch (ArgumentException)
+            {
+                return NotFound();
+            }
+
+            var department = await _repo.GetByIdAsync(id);
+            var departmentDTO = _mapper.Map<DepartmentDTO>(department);
+            return Ok(new { message = "patched", Department = departmentDTO });
         }
     }
 }

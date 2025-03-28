@@ -1,10 +1,9 @@
 ﻿using AutoMapper;
 using LabApi.DTO;
 using LabApi.Models;
-using Microsoft.AspNetCore.Http;
+using LabApi.Repo;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace LabApi.Controllers
 {
@@ -12,18 +11,19 @@ namespace LabApi.Controllers
     [ApiController]
     public class StudentController : ControllerBase
     {
-        private readonly ITIDbContext _db;
+        private readonly IGenericRepo<Student> _repo;
         private readonly IMapper _mapper;
-        public StudentController(ITIDbContext db,IMapper mapper)
+        public StudentController(IGenericRepo<Student> studentRepo, IMapper mapper)
         {
-            _db = db;
+            _repo = studentRepo;
             _mapper = mapper;
         }
+
         [HttpGet]
-        public IActionResult Get()
+        public async Task<IActionResult> Get()
         {
-            var students = _db.Students.Include(s => s.Department).ToList();
-            if (students == null )
+            var students = await _repo.GetAllAsync();
+            if (students == null)
             {
                 return NotFound();
             }
@@ -31,25 +31,25 @@ namespace LabApi.Controllers
             var studentDTOs = _mapper.Map<List<StudentDTO>>(students);
             return Ok(studentDTOs);
         }
+
         [HttpGet("{id:int}")]
-        public IActionResult Get(int id)
+        public async Task<IActionResult> Get(int id)
         {
-            var student = _db.Students.Include(s=>s.Department).FirstOrDefault(s => s.Id == id);
+            var student = await _repo.GetByIdWithIncludesAsync(id, s => s.Department);
             if (student == null)
             {
                 return NotFound();
             }
-            StudentDTO studentDTO = new StudentDTO { };
-            studentDTO.name = student.Name;
-            studentDTO.address = student.Address;
-            studentDTO.deptName = student.Department!.Name;
-            studentDTO.skill = "problem solving";
+
+            var studentDTO = _mapper.Map<StudentDTO>(student);
             return Ok(new { message = $"Student with id {id} is found", Student = studentDTO });
         }
+
         [HttpGet("{name:alpha}")]
-        public IActionResult Get(string name)
+        public async Task<IActionResult> Get(string name)
         {
-            var student = _db.Students.FirstOrDefault(s => s.Name == name);
+            var students = await _repo.FindAsync(s => s.Name == name);
+            var student = students.FirstOrDefault();
             if (student == null)
             {
                 return NotFound();
@@ -57,60 +57,54 @@ namespace LabApi.Controllers
             var studentDTO = _mapper.Map<StudentDTO>(student);
             return Ok(new { message = $"Student with name {name} is found", Student = studentDTO });
         }
+
         [HttpPost]
-        public IActionResult Add(Student student)
+        public async Task<IActionResult> Add(Student student)
         {
-            _db.Students.Add(student);
-            _db.SaveChanges();
+            await _repo.AddAsync(student);
             var studentDTO = _mapper.Map<StudentDTO>(student);
-            return CreatedAtAction(nameof(Get), new { id = student.Id }, new { message = "created", Strudent = studentDTO });
+            return CreatedAtAction(nameof(Get), new { id = student.Id }, new { message = "created", Student = studentDTO });
         }
+
         [HttpPut]
-        public IActionResult Update(Student student)
+        public async Task<IActionResult> Update(Student student)
         {
-            _db.Students.Update(student);
-            _db.SaveChanges();
+            await _repo.UpdateAsync(student);
             var studentDTO = _mapper.Map<StudentDTO>(student);
             return Ok(new { message = "updated", Student = studentDTO });
         }
+
         [HttpPatch("{id:int}")]
-        public IActionResult Patch(int id, [FromBody] JsonPatchDocument<Student> patchDoc)
+        public async Task<IActionResult> Patch(int id, [FromBody] JsonPatchDocument<Student> patchDoc)
         {
             if (patchDoc == null)
             {
                 return BadRequest();
             }
 
-            var student = _db.Students.FirstOrDefault(s => s.Id == id);
-            if (student == null)
+            try
+            {
+                await _repo.PatchAsync(id, patchDoc);
+            }
+            catch (ArgumentException)
             {
                 return NotFound();
             }
 
-            patchDoc.ApplyTo(student, ModelState);
-
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            _db.SaveChanges();
+            var student = await _repo.GetByIdAsync(id);
             var studentDTO = _mapper.Map<StudentDTO>(student);
             return Ok(new { message = "patched", Student = studentDTO });
         }
 
-
-
         [HttpDelete("{id:int}")]
-        public IActionResult Delete(int id)
+        public async Task<IActionResult> Delete(int id)
         {
-            var student = _db.Students.FirstOrDefault(s => s.Id == id);
+            var student = await _repo.GetByIdAsync(id);
             if (student == null)
             {
                 return NotFound();
             }
-            _db.Students.Remove(student);
-            _db.SaveChanges();
+            await _repo.DeleteAsync(student);
             var studentDTO = _mapper.Map<StudentDTO>(student);
             return Ok(new { message = "deleted", Student = studentDTO });
         }
