@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations.Operations;
 using Microsoft.Extensions.Options;
 using LabApi.Repo;
 using LabApi.Middlewares;
+using LabApi.Filters;
 
 namespace LabApi
 {
@@ -15,13 +16,15 @@ namespace LabApi
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Add services to the container.
-
-            builder.Services.AddControllers()
-    .       AddNewtonsoftJson(options =>
+            builder.Services.AddControllers(options =>
             {
-              options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore;
-             });
+                options.Filters.Add<AddAppNameHeaderFilter>();
+            })
+            .AddNewtonsoftJson(options =>
+            {
+                options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore;
+            });
+
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowAnyUser", policy =>
