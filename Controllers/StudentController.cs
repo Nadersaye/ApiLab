@@ -1,4 +1,5 @@
-﻿using LabApi.Models;
+﻿using LabApi.DTO;
+using LabApi.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
@@ -33,7 +34,12 @@ namespace LabApi.Controllers
             {
                 return NotFound();
             }
-            return Ok(new { message = $"Student with id {id} is found", Student = student });
+            StudentDTO studentDTO = new StudentDTO { };
+            studentDTO.name = student.Name;
+            studentDTO.address = student.Address;
+            studentDTO.deptName = student.Department.Name;
+            studentDTO.skill = "problem solving";
+            return Ok(new { message = $"Student with id {id} is found", Student = studentDTO });
         }
         [HttpGet("{name:alpha}")]
         public IActionResult Get(string name)

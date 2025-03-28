@@ -1,6 +1,8 @@
-﻿using LabApi.Models;
+﻿using LabApi.DTO;
+using LabApi.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace LabApi.Controllers
 {
@@ -16,22 +18,42 @@ namespace LabApi.Controllers
         [HttpGet]
         public IActionResult Get()
         {
-            var departments = _db.Departments.ToList();
-            if (departments is null)
+            var departments = _db.Departments.Include(d => d.Students).ToList();
+
+            if (departments == null || !departments.Any())
             {
                 return NotFound();
             }
-            return Ok(departments);
+
+            var departmentDTOs = departments.Select(department => new DepartmentDTO
+            {
+                DeptName = department.Name,
+                StudentSNames = department.Students.Select(s => s.Name).ToList(),
+                ManagerName = department.ManagerName,
+                Count = department.Students.Count,
+                Message = "Department found"
+            }).ToList();
+
+            return Ok(departmentDTOs);
         }
+
         [HttpGet("{id:int}")]
         public IActionResult Get(int id)
         {
-            var department = _db.Departments.FirstOrDefault(d => d.Id == id);
+            var department = _db.Departments.Include(d=>d.Students).FirstOrDefault(d => d.Id == id);
+
             if (department == null)
             {
                 return NotFound();
             }
-            return Ok(new { message = $"Department with id {id} is found", Department = department });
+            DepartmentDTO departmentDTO = new DepartmentDTO { };
+            departmentDTO.DeptName = department.Name;
+            departmentDTO.StudentSNames = department.Students.Select(s => s.Name).ToList();
+            departmentDTO.ManagerName = department.ManagerName;
+            departmentDTO.Count = department.Students.Count;
+            departmentDTO.Message = "Department found";
+
+            return Ok(new { message = $"Department with id {id} is found", Department = departmentDTO });
         }
         [HttpGet("{name:alpha}")]
         public IActionResult Get(string name)

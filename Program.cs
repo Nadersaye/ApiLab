@@ -20,6 +20,13 @@ namespace LabApi
             {
               options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore;
              });
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowAnyUser", policy =>
+                {
+                    policy.AllowAnyHeader().AllowAnyMethod().AllowAnyOrigin();
+                });
+            });
             // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
             builder.Services.AddOpenApi();
             builder.Services.AddSwaggerGen();
@@ -42,7 +49,7 @@ namespace LabApi
 
             app.UseAuthorization();
 
-
+            app.UseCors("AllowAnyUser");
             app.MapControllers();
 
             app.Run();
