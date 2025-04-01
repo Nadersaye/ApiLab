@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 
 namespace LabApi.Models
 {
@@ -8,12 +9,12 @@ namespace LabApi.Models
         public ITIDbContext(DbContextOptions<ITIDbContext> options) : base(options) { }
         public virtual DbSet<Student> Students { get; set; }
         public virtual DbSet<Department> Departments { get; set; }
+        
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
         }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            
         }
     }
 }

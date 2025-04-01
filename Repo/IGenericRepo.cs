@@ -17,5 +17,6 @@ namespace LabApi.Repo
         Task PatchAsync(int id, JsonPatchDocument<T> patchDoc);
         Task<IEnumerable<T>> GetAllWithIncludesAsync(params Expression<Func<T, object>>[] includes);
         Task<T> GetByIdWithIncludesAsync(int id, params Expression<Func<T, object>>[] includes);
+        Task<T> GetByNameWithIncludesAsync(string name, params Expression<Func<T, object>>[] includes);
     }
 }

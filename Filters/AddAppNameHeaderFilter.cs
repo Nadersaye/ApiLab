@@ -18,7 +18,7 @@ namespace LabApi.Filters
 
         public void OnResultExecuted(ResultExecutedContext context)
         {
-            context.HttpContext.Response.Headers.Add("X-App-Name", _appName);
+            
         }
     }
 }

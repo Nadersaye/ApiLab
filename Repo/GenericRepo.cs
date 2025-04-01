@@ -112,5 +112,15 @@ namespace LabApi.Repo
         {
             throw new NotImplementedException();
         }
+
+        public async Task<T> GetByNameWithIncludesAsync(string name, params Expression<Func<T, object>>[] includes)
+        {
+            IQueryable<T> query = _dbSet;
+            foreach (var include in includes)
+            {
+                query = query.Include(include);
+            }
+            return await query.FirstOrDefaultAsync(e=>EF.Property<string>(e,"Name") == name);
+        }
     }
 }

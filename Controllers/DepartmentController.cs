@@ -64,8 +64,7 @@ namespace LabApi.Controllers
         [HttpGet("{name:alpha}")]
         public async Task<IActionResult> Get(string name)
         {
-            var departments = await _repo.FindAsync(d => d.Name == name && !d.IsDeleted);
-            var department = departments.FirstOrDefault();
+            var department = await _repo.GetByNameWithIncludesAsync(name,d=>d.Students);
             if (department == null)
             {
                 return NotFound();

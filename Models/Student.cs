@@ -18,5 +18,6 @@ namespace LabApi.Models
         [ForeignKey(nameof(Department))]
         public int DeptId { get; set; }
         public Department? Department { get; set; } = null!;
+        public bool IsDeleted { get; set; } = false;
     }
 }
